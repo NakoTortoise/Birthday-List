@@ -37,7 +37,7 @@ if df is None:
 
 st.caption("Tip: Use the sidebar to filter by Price, Need, and Want.")
 
-st.warning("⚠️ **Note:** This app currently contains **test data only**. Please check back later for the finalized list!", icon="🚀")
+st.success("✅ **Notice:** This app now shows the **real birthday list entries**. Enjoy!", icon="🚀")
 
 # ==========================================
 # 3. SIDEBAR FILTERS
