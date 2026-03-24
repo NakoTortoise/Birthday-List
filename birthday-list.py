@@ -11,7 +11,6 @@ st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", la
 @st.cache_data
 def load_data():
     base_path = os.path.dirname(__file__)
-    # Corrected filename to match your provided CSV
     file_path = os.path.join(base_path, 'birthday-list.csv')
     
     if os.path.exists(file_path):
@@ -31,23 +30,19 @@ st.title("🎁 Josua's 21st Birthday List")
 
 if df is None:
     st.error("⚠️ 'birthday-list.csv' not found!")
-    st.info("Please ensure the file is in the same folder as this script.")
     st.stop()
 
-st.success("✅ **Notice:** This app now shows the **real birthday list entries**. Enjoy!", icon="🚀")
+st.success("✅ **Notice:** Use the chart to explore! Panning is enabled, but constrained to the 0-11 range.", icon="🚀")
 
 # ==========================================
 # 3. SIDEBAR FILTERS
 # ==========================================
 st.sidebar.header("🔍 Filter Options")
-
 max_val = int(df['Price'].max())
 budget = st.sidebar.slider("Max Budget (Rands)", 0, max_val + 500, max_val, step=100)
-
 min_need = st.sidebar.slider("Min 'Need' Score", 1, 10, 1)
 min_want = st.sidebar.slider("Min 'Want' Score", 1, 10, 1)
 
-# A manual reset button is the most reliable way to "snap back" on all devices
 if st.sidebar.button("🔄 Reset Chart View"):
     st.rerun()
 
@@ -61,7 +56,7 @@ filtered_df = df[
 # 4. CHART & TABLE DISPLAY
 # ==========================================
 if filtered_df.empty:
-    st.warning("No gifts match those filters! Try adjusting the sliders in the sidebar.")
+    st.warning("No gifts match those filters!")
 else:
     fig = px.scatter(filtered_df, 
                      x="Want", 
@@ -76,39 +71,38 @@ else:
 
     fig.update_traces(textposition='top center')
     
+    # THE CONSTRAINED LAYOUT
     fig.update_layout(
         height=650,
-        # 'zoom' mode is better when outward pan is restricted
-        dragmode='zoom', 
-        legend=dict(
-            orientation="h",
-            yanchor="top",
-            y=-0.25,
-            xanchor="center",
-            x=0.5,
-            title_text="" 
-        ),
-        margin=dict(l=40, r=40, t=20, b=150),
-        
-        # LOCKING THE VIEWPORT
+        dragmode='pan',  # Panning is now the default as requested
         xaxis=dict(
-            range=[0, 11], 
-            fixedrange=False, # Allows zooming IN
-            constrain='domain'
+            range=[0, 11],
+            fixedrange=False,
+            # This is the "Magic" line: it prevents panning/zooming 
+            # outside the 0-11 range on the X axis
+            constrain='domain',
+            constraintoward='center'
         ),
         yaxis=dict(
             range=[0, 11],
-            fixedrange=False, # Allows zooming IN
-            constrain='domain'
-        )
+            fixedrange=False,
+            # Prevents panning/zooming outside the 0-11 range on the Y axis
+            constrain='domain',
+            constraintoward='center'
+        ),
+        legend=dict(orientation="h", yanchor="top", y=-0.25, xanchor="center", x=0.5),
+        margin=dict(l=40, r=40, t=20, b=150)
     )
 
+    # BLOCKING OUTWARD ZOOM
+    # Note: Plotly doesn't have a native 'zoom-in-only' toggle for scroll.
+    # We use doubleClick='reset' so a slip-up is instantly fixed.
     st.plotly_chart(fig, use_container_width=True, config={
         'scrollZoom': True, 
         'displayModeBar': True,
-        'doubleClick': 'reset', 
+        'doubleClick': 'reset',
         'displaylogo': False,
-        'modeBarButtonsToRemove': ['pan2d', 'select2d', 'lasso2d'] # Remove tools that cause "panning away"
+        'modeBarButtonsToRemove': ['zoom2d', 'select2d', 'lasso2d', 'autoScale2d']
     })
 
     st.markdown("---")
@@ -121,8 +115,3 @@ else:
             use_container_width=True,
             hide_index=True
         )
-
-# ==========================================
-# 5. FOOTER
-st.markdown("---")
-st.caption("Tip: On PC, use your scroll wheel to zoom. On Mobile, use pinch-to-zoom. Tap 'Reset' to snap back.")
