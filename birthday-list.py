@@ -26,10 +26,9 @@ df = pd.DataFrame(my_gifts)
 # ==========================================
 st.sidebar.header("🔍 Filter Options")
 
-# Price Filter with Snapping (Step=50)
+# Price Filter with Snapping (Step=100 for even cleaner UX)
 max_val = int(df['Price'].max())
-# We use step=50 to make it snap in R50 increments
-budget = st.sidebar.slider("Max Budget (Rands)", 0, max_val + 500, max_val, step=50)
+budget = st.sidebar.slider("Max Budget (Rands)", 0, max_val + 500, max_val, step=100)
 
 # Need & Want Filters
 min_need = st.sidebar.slider("Min 'Need' Score", 1, 10, 1)
@@ -61,27 +60,33 @@ else:
                      size_max=50, 
                      range_x=[0, 11], 
                      range_y=[0, 11],
-                     labels={"Want": "Want (1-10)", "Need": "Need (1-10)"},
+                     labels={"Want": "Want Score (1-10)", "Need": "Need Score (1-10)"},
                      template="plotly_white")
 
-    # MOBILE OPTIMIZATION: Move legend to bottom and clean up text
+    # CUSTOMIZATIONS FOR PAN & OVERLAP
     fig.update_traces(textposition='top center')
+    
     fig.update_layout(
-        height=600,
+        height=650,
+        dragmode='pan',  # Sets "Pan" as the default interaction tool
         legend=dict(
-            orientation="h",     # Horizontal orientation
-            yanchor="bottom",
-            y=-0.2,              # Move it below the X-axis
+            orientation="h",
+            yanchor="top",
+            y=-0.25,      # Pushed further down to avoid X-axis overlap
             xanchor="center",
-            x=0.5
+            x=0.5,
+            title_text="" # Removes the "Category" title to save space
         ),
-        margin=dict(l=20, r=20, t=20, b=100) # Extra bottom margin for legend
+        margin=dict(l=40, r=40, t=20, b=150), # Large bottom margin for the legend
+        xaxis=dict(fixedrange=False), # Allows horizontal panning
+        yaxis=dict(fixedrange=False)  # Allows vertical panning
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    # config option to ensure the modebar shows the pan icon as active
+    st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
 
     # Display list as a nice clean table
-    st.subheader("Selected Gifts")
+    st.subheader("Selected Gifts Table")
     st.dataframe(
         filtered_df[['Gift Item', 'Price', 'Category']].sort_values(by="Price"),
         use_container_width=True,
@@ -89,4 +94,4 @@ else:
     )
 
 st.markdown("---")
-st.caption("Tip: On mobile, pinch the chart to zoom or tap bubbles for details.")
+st.caption("Navigation: Use one finger (mobile) or mouse click (desktop) to PAN. Scroll to zoom.")
