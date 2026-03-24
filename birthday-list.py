@@ -6,7 +6,6 @@ import plotly.express as px
 # 1. PAGE CONFIG & DATA
 # ==========================================
 st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", layout="wide")
-st.caption("Tip: Use the sidebar to filter by price, need or want.")
 
 # Your Gift Data
 my_gifts = [
@@ -46,6 +45,8 @@ filtered_df = df[
 # 3. MAIN UI & PLOTTING
 # ==========================================
 st.title("🎁 My Birthday Wishlist")
+
+st.caption("Tip: Use the sidebar to filter by price, need or want.")
 
 if filtered_df.empty:
     st.warning("No gifts match those filters! Try adjusting the sidebar.")
