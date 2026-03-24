@@ -25,7 +25,7 @@ df = load_data()
 # 2. MAIN UI & ERROR HANDLING
 # ==========================================
 
-st.warning("⚠️ **Note:** This app currently contains **test data only**. Please check back later for the finalized 21st birthday wishlist!", icon="🚀")
+st.warning("⚠️ **Note:** This app currently contains **test data only**. Please check back later for the finalized list!", icon="🚀")
 
 st.title("🎁 Josua's 21st Birthday List")
 
