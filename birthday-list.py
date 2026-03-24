@@ -28,6 +28,7 @@ df = load_data()
 # ==========================================
 # 2. MAIN UI & ERROR HANDLING
 # ==========================================
+st.balloons()
 st.title("🎁 Josua's 21st Birthday List")
 
 if df is None:
