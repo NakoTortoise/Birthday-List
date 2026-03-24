@@ -12,7 +12,7 @@ st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", la
 def load_data():
     # This finds the folder where this .py file is saved
     base_path = os.path.dirname(__file__)
-    file_path = os.path.join(base_path, 'birthday-list.csv')
+    file_path = os.path.join(base_path, 'gifts.csv')
     
     if os.path.exists(file_path):
         return pd.read_csv(file_path)
