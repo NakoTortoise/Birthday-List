@@ -46,7 +46,7 @@ filtered_df = df[
 # ==========================================
 st.title("🎁 Josua's 21st Birthday List")
 
-st.caption("Tip: Use the sidebar to filter by price, need or want.")
+st.caption("Tip: Use the sidebar to filter price, need and want.")
 
 if filtered_df.empty:
     st.warning("No gifts match those filters! Try adjusting the sidebar.")
