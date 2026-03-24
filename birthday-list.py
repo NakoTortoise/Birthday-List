@@ -15,8 +15,10 @@ def load_data():
     
     if os.path.exists(file_path):
         try:
+            # utf-8-sig handles standard UTF-8 AND Excel's special UTF-8 format
             return pd.read_csv(file_path, encoding='utf-8-sig')
-        except Exception:
+        except UnicodeDecodeError:
+            # Fallback for older Windows-style CSVs
             return pd.read_csv(file_path, encoding='cp1252')
     else:
         return None
@@ -29,23 +31,28 @@ df = load_data()
 st.title("🎁 Josua's 21st Birthday List")
 
 if df is None:
-    st.error("⚠️ 'birthday-list.csv' not found!")
+    st.error("⚠️ 'gifts.csv' not found!")
+    st.info("Please ensure 'gifts.csv' is in the same folder as this script.")
     st.stop()
 
-st.success("✅ **Notice:** Use the chart to explore! Panning is enabled, but constrained to the 0-11 range.", icon="🚀")
+st.caption("Tip: Use the sidebar to filter by Price, Need, and Want.")
+
+st.success("✅ **Notice:** This app now shows the **real birthday list entries**. Enjoy!", icon="🚀")
 
 # ==========================================
 # 3. SIDEBAR FILTERS
 # ==========================================
 st.sidebar.header("🔍 Filter Options")
+
+# Price Filter (Step=100 for easy snapping)
 max_val = int(df['Price'].max())
 budget = st.sidebar.slider("Max Budget (Rands)", 0, max_val + 500, max_val, step=100)
+
+# Need & Want Filters
 min_need = st.sidebar.slider("Min 'Need' Score", 1, 10, 1)
 min_want = st.sidebar.slider("Min 'Want' Score", 1, 10, 1)
 
-if st.sidebar.button("🔄 Reset Chart View"):
-    st.rerun()
-
+# Apply Filters to the Data
 filtered_df = df[
     (df['Price'] <= budget) & 
     (df['Need'] >= min_need) & 
@@ -56,8 +63,9 @@ filtered_df = df[
 # 4. CHART & TABLE DISPLAY
 # ==========================================
 if filtered_df.empty:
-    st.warning("No gifts match those filters!")
+    st.warning("No gifts match those filters! Try adjusting the sliders in the sidebar.")
 else:
+    # --- Create the Bubble Chart ---
     fig = px.scatter(filtered_df, 
                      x="Want", 
                      y="Need", 
@@ -66,52 +74,47 @@ else:
                      hover_name="Gift Item",
                      text="Gift Item",
                      size_max=50, 
+                     range_x=[0, 11], 
+                     range_y=[0, 11],
                      labels={"Want": "Want Score (1-10)", "Need": "Need Score (1-10)"},
                      template="plotly_white")
 
+    # --- Chart Styling (Pan mode & Legend Position) ---
     fig.update_traces(textposition='top center')
     
-    # THE CONSTRAINED LAYOUT
     fig.update_layout(
         height=650,
-        dragmode='pan',  # Panning is now the default as requested
-        xaxis=dict(
-            range=[0, 11],
-            fixedrange=False,
-            # This is the "Magic" line: it prevents panning/zooming 
-            # outside the 0-11 range on the X axis
-            constrain='domain',
-            constraintoward='center'
+        dragmode='pan',  # Default to Panning instead of Zooming
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.25,      # Pushes legend down to avoid X-axis overlap
+            xanchor="center",
+            x=0.5,
+            title_text="" 
         ),
-        yaxis=dict(
-            range=[0, 11],
-            fixedrange=False,
-            # Prevents panning/zooming outside the 0-11 range on the Y axis
-            constrain='domain',
-            constraintoward='center'
-        ),
-        legend=dict(orientation="h", yanchor="top", y=-0.25, xanchor="center", x=0.5),
-        margin=dict(l=40, r=40, t=20, b=150)
+        margin=dict(l=40, r=40, t=20, b=150), # Big bottom margin for the legend
+        xaxis=dict(fixedrange=False), 
+        yaxis=dict(fixedrange=False)
     )
 
-    # BLOCKING OUTWARD ZOOM
-    # Note: Plotly doesn't have a native 'zoom-in-only' toggle for scroll.
-    # We use doubleClick='reset' so a slip-up is instantly fixed.
-    st.plotly_chart(fig, use_container_width=True, config={
-        'scrollZoom': True, 
-        'displayModeBar': True,
-        'doubleClick': 'reset',
-        'displaylogo': False,
-        'modeBarButtonsToRemove': ['zoom2d', 'select2d', 'lasso2d', 'autoScale2d']
-    })
+    # --- Display the Chart ---
+    st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
 
     st.markdown("---")
+
+    # --- Display the Centered Table ---
     st.subheader("Selected Gifts Details")
     
+    # We use columns to "center" the table and prevent it from stretching too wide
     col_left, col_center, col_right = st.columns([0.1, 0.8, 0.1])
+    
     with col_center:
         st.dataframe(
             filtered_df[['Gift Item', 'Price', 'Category']].sort_values(by="Price"),
-            use_container_width=True,
+            use_container_width=True, # Fits the width of this specific 80% column
             hide_index=True
         )
+
+# ==========================================
+# 5. FOOTER
