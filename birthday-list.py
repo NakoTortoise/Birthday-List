@@ -44,7 +44,7 @@ filtered_df = df[
 # ==========================================
 # 3. MAIN UI & PLOTTING
 # ==========================================
-st.title("🎁 My Birthday Wishlist")
+st.title("🎁 Josua's 21st Birthday List")
 
 st.caption("Tip: Use the sidebar to filter by price, need or want.")
 
