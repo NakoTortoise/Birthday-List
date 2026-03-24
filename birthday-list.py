@@ -5,7 +5,7 @@ import plotly.express as px
 # ==========================================
 # 1. PAGE CONFIG & DATA
 # ==========================================
-st.set_page_config(page_title="My Birthday Gift Guide", page_icon="🎂", layout="wide")
+st.set_page_config(page_title="My Gift List", page_icon="🎁", layout="wide")
 
 # Your Gift Data
 my_gifts = [
@@ -24,17 +24,18 @@ df = pd.DataFrame(my_gifts)
 # ==========================================
 # 2. SIDEBAR FILTERS
 # ==========================================
-st.sidebar.header("🔍 Filter by Your Preferences")
+st.sidebar.header("🔍 Filter Options")
 
-# Price Filter
+# Price Filter with Snapping (Step=50)
 max_val = int(df['Price'].max())
-budget = st.sidebar.slider("Your Max Budget (Rands)", 0, max_val + 500, max_val)
+# We use step=50 to make it snap in R50 increments
+budget = st.sidebar.slider("Max Budget (Rands)", 0, max_val + 500, max_val, step=50)
 
 # Need & Want Filters
-min_need = st.sidebar.slider("Minimum 'Need' Score", 1, 10, 1)
-min_want = st.sidebar.slider("Minimum 'Want' Score", 1, 10, 1)
+min_need = st.sidebar.slider("Min 'Need' Score", 1, 10, 1)
+min_want = st.sidebar.slider("Min 'Want' Score", 1, 10, 1)
 
-# Apply Filters to DataFrame
+# Apply Filters
 filtered_df = df[
     (df['Price'] <= budget) & 
     (df['Need'] >= min_need) & 
@@ -42,16 +43,14 @@ filtered_df = df[
 ]
 
 # ==========================================
-# 3. MAIN UI
+# 3. MAIN UI & PLOTTING
 # ==========================================
-st.title("🎁 My Interactive Birthday Wishlist")
-st.write("Use the sidebar to filter gifts by your budget or how much I need/want them!")
+st.title("🎁 My Birthday Wishlist")
 
 if filtered_df.empty:
-    st.warning("No gifts match those filters! Try adjusting your budget or scores in the sidebar.")
+    st.warning("No gifts match those filters! Try adjusting the sidebar.")
 else:
     # Creating the Bubble Chart
-    # X = Want, Y = Need, Size = Price
     fig = px.scatter(filtered_df, 
                      x="Want", 
                      y="Need", 
@@ -59,21 +58,35 @@ else:
                      color="Category",
                      hover_name="Gift Item",
                      text="Gift Item",
-                     size_max=60, # Adjusts how big the bubbles get
-                     range_x=[0, 11], # Keep scale consistent
+                     size_max=50, 
+                     range_x=[0, 11], 
                      range_y=[0, 11],
-                     labels={"Want": "How much I want it (1-10)", "Need": "How much I need it (1-10)"},
-                     title="Gift Priority Matrix")
+                     labels={"Want": "Want (1-10)", "Need": "Need (1-10)"},
+                     template="plotly_white")
 
-    # Clean up the look
+    # MOBILE OPTIMIZATION: Move legend to bottom and clean up text
     fig.update_traces(textposition='top center')
-    fig.update_layout(height=600, template="plotly_white")
+    fig.update_layout(
+        height=600,
+        legend=dict(
+            orientation="h",     # Horizontal orientation
+            yanchor="bottom",
+            y=-0.2,              # Move it below the X-axis
+            xanchor="center",
+            x=0.5
+        ),
+        margin=dict(l=20, r=20, t=20, b=100) # Extra bottom margin for legend
+    )
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # Display the filtered list in a table
-    st.subheader("List of Matching Gifts")
-    st.table(filtered_df[['Gift Item', 'Price', 'Category']].sort_values(by="Price"))
+    # Display list as a nice clean table
+    st.subheader("Selected Gifts")
+    st.dataframe(
+        filtered_df[['Gift Item', 'Price', 'Category']].sort_values(by="Price"),
+        use_container_width=True,
+        hide_index=True
+    )
 
 st.markdown("---")
-st.caption("Tip: Hover over the bubbles to see the exact price!")
+st.caption("Tip: On mobile, pinch the chart to zoom or tap bubbles for details.")
