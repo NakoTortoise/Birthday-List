@@ -107,7 +107,7 @@ else:
             fixedrange=False
         )
     )
-
+    # --- Display the Chart ---
     # To strictly enforce "No Outward Zoom", we add this config to the st.plotly_chart
     st.plotly_chart(fig, use_container_width=True, config={
         'scrollZoom': True, 
@@ -115,9 +115,6 @@ else:
         'doubleClick': 'reset',  # Double-clicking returns exactly to [0, 11]
         'showAxisDragHandles': False, # Prevents dragging the axes themselves to expand range
     })
-
-    # --- Display the Chart ---
-    st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
 
     st.markdown("---")
 
