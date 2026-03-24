@@ -1,32 +1,41 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import os
 
 # ==========================================
-# 1. PAGE CONFIG & DATA
+# 1. PAGE CONFIG & DATA LOADING
 # ==========================================
 st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", layout="wide")
 
-# Your Gift Data
-my_gifts = [
-    {"Gift Item": "Noise Cancelling Headphones", "Price": 3500, "Need": 8, "Want": 9, "Category": "Tech"},
-    {"Gift Item": "Mechanical Keyboard", "Price": 1200, "Need": 4, "Want": 10, "Category": "Tech"},
-    {"Gift Item": "Screwdriver Set", "Price": 450, "Need": 10, "Want": 3, "Category": "Tools"},
-    {"Gift Item": "Minecraft Server (1 Yr)", "Price": 250, "Need": 2, "Want": 8, "Category": "Gaming"},
-    {"Gift Item": "Python Course", "Price": 300, "Need": 9, "Want": 7, "Category": "Education"},
-    {"Gift Item": "Stellenbosch Hoodie", "Price": 650, "Need": 5, "Want": 7, "Category": "Apparel"},
-    {"Gift Item": "Multimeter", "Price": 900, "Need": 9, "Want": 5, "Category": "Tools"},
-    {"Gift Item": "Spotify 6-Month Sub", "Price": 360, "Need": 3, "Want": 9, "Category": "Entertainment"},
-]
+@st.cache_data
+def load_data():
+    file_path = 'gifts.csv'
+    if os.path.exists(file_path):
+        return pd.read_csv(file_path)
+    else:
+        return None
 
-df = pd.DataFrame(my_gifts)
+df = load_data()
 
 # ==========================================
-# 2. SIDEBAR FILTERS
+# 2. MAIN UI & ERROR HANDLING
+# ==========================================
+st.title("🎁 Josua's 21st Birthday List")
+
+if df is None:
+    st.error("⚠️ 'gifts.csv' not found! Please make sure the file is in the same directory as this script.")
+    st.info("Your CSV should have these columns: Gift Item, Price, Need, Want, Category")
+    st.stop()
+
+st.caption("Tip: Use the sidebar to filter price, need and want.")
+
+# ==========================================
+# 3. SIDEBAR FILTERS
 # ==========================================
 st.sidebar.header("🔍 Filter Options")
 
-# Price Filter with Snapping (Step=100 for even cleaner UX)
+# Price Filter with Snapping (Step=100)
 max_val = int(df['Price'].max())
 budget = st.sidebar.slider("Max Budget (Rands)", 0, max_val + 500, max_val, step=100)
 
@@ -42,12 +51,8 @@ filtered_df = df[
 ]
 
 # ==========================================
-# 3. MAIN UI & PLOTTING
+# 4. PLOTTING
 # ==========================================
-st.title("🎁 Josua's 21st Birthday List")
-
-st.caption("Tip: Use the sidebar to filter price, need and want.")
-
 if filtered_df.empty:
     st.warning("No gifts match those filters! Try adjusting the sidebar.")
 else:
@@ -80,8 +85,8 @@ else:
             title_text="" # Removes the "Category" title to save space
         ),
         margin=dict(l=40, r=40, t=20, b=150), # Large bottom margin for the legend
-        xaxis=dict(fixedrange=False), # Allows horizontal panning
-        yaxis=dict(fixedrange=False)  # Allows vertical panning
+        xaxis=dict(fixedrange=False), 
+        yaxis=dict(fixedrange=False)
     )
 
     # config option to ensure the modebar shows the pan icon as active
