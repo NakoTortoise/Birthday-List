@@ -10,16 +10,13 @@ st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", la
 
 @st.cache_data
 def load_data():
-    # Get the directory where THIS script (birthday_app.py) is located
+    # This finds the folder where this .py file is saved
     base_path = os.path.dirname(__file__)
-    # Combine it with the filename to get an absolute path
     file_path = os.path.join(base_path, 'gifts.csv')
     
     if os.path.exists(file_path):
         return pd.read_csv(file_path)
     else:
-        # Debugging: this will show you exactly where the app IS looking
-        st.error(f"Looking for file at: {file_path}")
         return None
 
 df = load_data()
@@ -30,18 +27,18 @@ df = load_data()
 st.title("🎁 Josua's 21st Birthday List")
 
 if df is None:
-    st.error("⚠️ 'gifts.csv' not found! Please make sure the file is in the same directory as this script.")
-    st.info("Your CSV should have these columns: Gift Item, Price, Need, Want, Category")
+    st.error("⚠️ 'gifts.csv' not found!")
+    st.info("Please ensure 'gifts.csv' is in the same folder as this script.")
     st.stop()
 
-st.caption("Tip: Use the sidebar to filter price, need and want.")
+st.caption("Tip: Use the sidebar to filter by Price, Need, and Want.")
 
 # ==========================================
 # 3. SIDEBAR FILTERS
 # ==========================================
 st.sidebar.header("🔍 Filter Options")
 
-# Price Filter with Snapping (Step=100)
+# Price Filter (Step=100 for easy snapping)
 max_val = int(df['Price'].max())
 budget = st.sidebar.slider("Max Budget (Rands)", 0, max_val + 500, max_val, step=100)
 
@@ -49,7 +46,7 @@ budget = st.sidebar.slider("Max Budget (Rands)", 0, max_val + 500, max_val, step
 min_need = st.sidebar.slider("Min 'Need' Score", 1, 10, 1)
 min_want = st.sidebar.slider("Min 'Want' Score", 1, 10, 1)
 
-# Apply Filters
+# Apply Filters to the Data
 filtered_df = df[
     (df['Price'] <= budget) & 
     (df['Need'] >= min_need) & 
@@ -57,12 +54,12 @@ filtered_df = df[
 ]
 
 # ==========================================
-# 4. PLOTTING
+# 4. CHART & TABLE DISPLAY
 # ==========================================
 if filtered_df.empty:
-    st.warning("No gifts match those filters! Try adjusting the sidebar.")
+    st.warning("No gifts match those filters! Try adjusting the sliders in the sidebar.")
 else:
-    # Creating the Bubble Chart
+    # --- Create the Bubble Chart ---
     fig = px.scatter(filtered_df, 
                      x="Want", 
                      y="Need", 
@@ -76,38 +73,42 @@ else:
                      labels={"Want": "Want Score (1-10)", "Need": "Need Score (1-10)"},
                      template="plotly_white")
 
-    # CUSTOMIZATIONS FOR PAN & OVERLAP
+    # --- Chart Styling (Pan mode & Legend Position) ---
     fig.update_traces(textposition='top center')
     
     fig.update_layout(
         height=650,
-        dragmode='pan',  # Sets "Pan" as the default interaction tool
+        dragmode='pan',  # Default to Panning instead of Zooming
         legend=dict(
             orientation="h",
             yanchor="top",
-            y=-0.25,      # Pushed further down to avoid X-axis overlap
+            y=-0.25,      # Pushes legend down to avoid X-axis overlap
             xanchor="center",
             x=0.5,
-            title_text="" # Removes the "Category" title to save space
+            title_text="" 
         ),
-        margin=dict(l=40, r=40, t=20, b=150), # Large bottom margin for the legend
+        margin=dict(l=40, r=40, t=20, b=150), # Big bottom margin for the legend
         xaxis=dict(fixedrange=False), 
         yaxis=dict(fixedrange=False)
     )
 
-    # Display list as a nice clean table
-    st.subheader("Selected Gifts Table")
+    # --- Display the Chart ---
+    st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
+
+    st.markdown("---")
+
+    # --- Display the Centered Table ---
+    st.subheader("Selected Gifts Details")
     
-    # Create three columns; the middle one will hold our table
-    # Adjust the ratios [1, 2, 1] to change how much space the table takes
-    col_left, col_main, col_right = st.columns([1, 2, 1])
+    # We use columns to "center" the table and prevent it from stretching too wide
+    col_left, col_center, col_right = st.columns([0.1, 0.8, 0.1])
     
-    with col_main:
+    with col_center:
         st.dataframe(
             filtered_df[['Gift Item', 'Price', 'Category']].sort_values(by="Price"),
-            use_container_width=False,  # This prevents the "stretch"
+            use_container_width=True, # Fits the width of this specific 80% column
             hide_index=True
         )
 
-st.markdown("---")
-st.caption("Navigation: Use one finger (mobile) or mouse click (desktop) to PAN. Scroll to zoom.")
+# ==========================================
+# 5. FOOTER
