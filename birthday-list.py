@@ -11,7 +11,7 @@ st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", la
 @st.cache_data
 def load_data():
     base_path = os.path.dirname(__file__)
-    file_path = os.path.join(base_path, 'gifts.csv')
+    file_path = os.path.join(base_path, 'birthday-list.csv')
     
     if os.path.exists(file_path):
         try:
