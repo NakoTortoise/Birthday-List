@@ -84,19 +84,37 @@ else:
     
     fig.update_layout(
         height=650,
-        dragmode='pan',  # Default to Panning instead of Zooming
+        dragmode='pan',
         legend=dict(
             orientation="h",
             yanchor="top",
-            y=-0.25,      # Pushes legend down to avoid X-axis overlap
+            y=-0.25,
             xanchor="center",
             x=0.5,
             title_text="" 
         ),
-        margin=dict(l=40, r=40, t=20, b=150), # Big bottom margin for the legend
-        xaxis=dict(fixedrange=False), 
-        yaxis=dict(fixedrange=False)
+        margin=dict(l=40, r=40, t=20, b=150),
+        
+        # LOCKING THE AXES
+        xaxis=dict(
+            range=[0, 11],          # Sets the initial and "Home" view
+            constrain='domain',     # Keeps the plot within the specified box
+            fixedrange=False        # Set to False to allow internal zooming
+        ),
+        yaxis=dict(
+            range=[0, 11],
+            constrain='domain',
+            fixedrange=False
+        )
     )
+
+    # To strictly enforce "No Outward Zoom", we add this config to the st.plotly_chart
+    st.plotly_chart(fig, use_container_width=True, config={
+        'scrollZoom': True, 
+        'displayModeBar': True,
+        'doubleClick': 'reset',  # Double-clicking returns exactly to [0, 11]
+        'showAxisDragHandles': False, # Prevents dragging the axes themselves to expand range
+    })
 
     # --- Display the Chart ---
     st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
