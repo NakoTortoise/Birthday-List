@@ -10,10 +10,16 @@ st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", la
 
 @st.cache_data
 def load_data():
-    file_path = 'gifts.csv'
+    # Get the directory where THIS script (birthday_app.py) is located
+    base_path = os.path.dirname(__file__)
+    # Combine it with the filename to get an absolute path
+    file_path = os.path.join(base_path, 'gifts.csv')
+    
     if os.path.exists(file_path):
         return pd.read_csv(file_path)
     else:
+        # Debugging: this will show you exactly where the app IS looking
+        st.error(f"Looking for file at: {file_path}")
         return None
 
 df = load_data()
