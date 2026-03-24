@@ -95,16 +95,19 @@ else:
         yaxis=dict(fixedrange=False)
     )
 
-    # config option to ensure the modebar shows the pan icon as active
-    st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
-
     # Display list as a nice clean table
     st.subheader("Selected Gifts Table")
-    st.dataframe(
-        filtered_df[['Gift Item', 'Price', 'Category']].sort_values(by="Price"),
-        use_container_width=True,
-        hide_index=True
-    )
+    
+    # Create three columns; the middle one will hold our table
+    # Adjust the ratios [1, 2, 1] to change how much space the table takes
+    col_left, col_main, col_right = st.columns([1, 2, 1])
+    
+    with col_main:
+        st.dataframe(
+            filtered_df[['Gift Item', 'Price', 'Category']].sort_values(by="Price"),
+            use_container_width=False,  # This prevents the "stretch"
+            hide_index=True
+        )
 
 st.markdown("---")
 st.caption("Navigation: Use one finger (mobile) or mouse click (desktop) to PAN. Scroll to zoom.")
