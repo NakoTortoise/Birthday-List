@@ -10,12 +10,16 @@ st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", la
 
 @st.cache_data
 def load_data():
-    # This finds the folder where this .py file is saved
     base_path = os.path.dirname(__file__)
-    file_path = os.path.join(base_path, 'gifts.csv')
+    file_path = os.path.join(base_path, 'birthday-list.csv')
     
     if os.path.exists(file_path):
-        return pd.read_csv(file_path)
+        try:
+            # utf-8-sig handles standard UTF-8 AND Excel's special UTF-8 format
+            return pd.read_csv(file_path, encoding='utf-8-sig')
+        except UnicodeDecodeError:
+            # Fallback for older Windows-style CSVs
+            return pd.read_csv(file_path, encoding='cp1252')
     else:
         return None
 
