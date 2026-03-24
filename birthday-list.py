@@ -24,9 +24,6 @@ df = load_data()
 # ==========================================
 # 2. MAIN UI & ERROR HANDLING
 # ==========================================
-
-st.warning("⚠️ **Note:** This app currently contains **test data only**. Please check back later for the finalized list!", icon="🚀")
-
 st.title("🎁 Josua's 21st Birthday List")
 
 if df is None:
@@ -35,6 +32,8 @@ if df is None:
     st.stop()
 
 st.caption("Tip: Use the sidebar to filter by Price, Need, and Want.")
+
+st.warning("⚠️ **Note:** This app currently contains **test data only**. Please check back later for the finalized list!", icon="🚀")
 
 # ==========================================
 # 3. SIDEBAR FILTERS
