@@ -5,7 +5,8 @@ import plotly.express as px
 # ==========================================
 # 1. PAGE CONFIG & DATA
 # ==========================================
-st.set_page_config(page_title="My Gift List", page_icon="🎁", layout="wide")
+st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", layout="wide")
+st.caption("Tip: Use the sidebar to filter by price, need or want.")
 
 # Your Gift Data
 my_gifts = [
