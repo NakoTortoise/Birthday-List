@@ -34,7 +34,7 @@ with st.sidebar.expander("Edit Mode"):
     pwd_input = st.text_input("Password", type="password")
     
     # .get() prevents a crash if the key is missing from secrets.toml
-    target_password = st.secrets.get("admin_password", "DEFAULT_IF_MISSING")
+    target_password = st.secrets.get("secrets", "DEFAULT_IF_MISSING")
     
     if pwd_input == target_password and target_password != "DEFAULT_IF_MISSING":
         st.success("Admin Verified")
