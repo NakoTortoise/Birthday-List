@@ -94,6 +94,7 @@ filtered_df = df[
 # 5. CHART & TABLE
 # ==========================================
 if not filtered_df.empty:
+    st.subheader("Gift Items Chart")
     fig = px.scatter(filtered_df, x="Want", y="Need", size="Price", color="Category",
                      hover_name="Gift Item", text="Gift Item", size_max=40,
                      range_x=[0, 11], range_y=[0, 11], template="plotly_white")
@@ -102,6 +103,7 @@ if not filtered_df.empty:
     st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("---")
+    st.subheader("Gift Items Table")
     st.dataframe(filtered_df[['Gift Item', 'Price', 'Category']], use_container_width=True, hide_index=True)
 else:
     st.warning("No items match your filters.")
