@@ -14,14 +14,21 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 # Create connection with a high-speed refresh
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-@st.cache_data(ttl=0) # Setting ttl=0 forces the app to ignore old errors
+@st.cache_data(ttl=0)
 def load_data():
     try:
-        # We explicitly target 'Sheet1' to remove ambiguity
-        return conn.read(worksheet="Sheet1")
+        # We specify the worksheet AND the columns to be safe
+        # This prevents the API from scanning the whole workbook
+        return conn.read(
+            worksheet="Sheet1",
+            usecols=[0, 1, 2, 3, 4], # Specifically columns A through E
+            ttl=0
+        )
     except Exception as e:
-        st.error("🚨 Handshake Failed")
-        st.write(f"**Error Details:** {e}")
+        st.error(f"🚨 Connection Error: {e}")
+        # DIAGNOSTIC: This will print the names of all sheets the app CAN see
+        if "400" in str(e):
+            st.info("Tip: Ensure 'Sheet1' is the leftmost tab in your Google Sheet.")
         return None
 
 df = load_data()
