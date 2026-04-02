@@ -13,39 +13,54 @@ def load_data():
         # Pull the URL from your secrets
         sheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
         
-        # ENGINEERING TRICK: Convert the "edit" URL to a "export as CSV" URL
-        # This bypasses the 400 Bad Request by requesting a raw data stream
+        # Engineering Trick: Convert "edit" URL to "export as CSV" URL
+        # This bypasses the 400 Bad Request error
         csv_url = sheet_url.replace('/edit#gid=', '/export?format=csv&gid=')
         if '/edit' in sheet_url and 'gid' not in sheet_url:
             csv_url = sheet_url.replace('/edit', '/export?format=csv')
             
-        return pd.read_csv(csv_url)
+        # Read the data
+        data = pd.read_csv(csv_url)
+        return data
     except Exception as e:
-        st.error("🚨 Direct Connection Failed")
-        st.write(f"**Error Details:** {e}")
+        st.error(f"🚨 Connection Error: {e}")
         return None
 
 df = load_data()
 
-if df is None or df.empty:
-    st.info("💡 Check: Is Row 1 of your Google Sheet exactly: Gift Item, Price, Need, Want, Category?")
+# ==========================================
+# 2. DIAGNOSTIC & DATA CLEANING
+# ==========================================
+if df is not None:
+    # 1. Clean headers (remove invisible spaces)
+    df.columns = [str(c).strip() for c in df.columns]
+    
+    # 2. Check for the "Gift Item" column
+    if 'Gift Item' not in df.columns:
+        st.error("🚨 Column Header Mismatch")
+        st.write("Python sees these columns in your sheet:", list(df.columns))
+        st.info("💡 **Fix:** Ensure Row 1 of your Google Sheet contains: Gift Item, Price, Need, Want, Category")
+        st.stop()
+
+    # 3. Safe numeric conversion
+    df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0)
+    df['Need'] = pd.to_numeric(df['Need'], errors='coerce').fillna(1)
+    df['Want'] = pd.to_numeric(df['Want'], errors='coerce').fillna(1)
+else:
     st.stop()
 
 # ==========================================
-# 2. MAIN UI & AUTHENTICATION
+# 3. MAIN UI & AUTHENTICATION
 # ==========================================
 st.title("🎁 Josua's 21st Birthday List")
 
-# Admin Sidebar Toggle with safe secret access
+# Admin Sidebar Toggle
 st.sidebar.header("🔐 Admin Controls")
-# Replace your authentication logic with this "safer" version
 with st.sidebar.expander("Edit Mode"):
     pwd_input = st.text_input("Password", type="password")
+    actual_pwd = st.secrets.get("admin_password")
     
-    # .get() prevents a crash if the key is missing from secrets.toml
-    target_password = st.secrets.get("admin_password", "DEFAULT_IF_MISSING")
-    
-    if pwd_input == target_password and target_password != "DEFAULT_IF_MISSING":
+    if actual_pwd and pwd_input == actual_pwd:
         st.success("Admin Verified")
         is_admin = True
     else:
@@ -54,34 +69,9 @@ with st.sidebar.expander("Edit Mode"):
 st.success("✅ Connected to Live Database", icon="🚀")
 
 # ==========================================
-# 3. DATA CLEANING & SIDEBAR FILTERS
+# 4. SIDEBAR FILTERS
 # ==========================================
-# 1. Clean invisible spaces from headers
-df.columns = df.columns.str.strip()
-
-# 2. Flexible Mapping (handles common typos or case differences)
-column_map = {
-    'Gift Item': [col for col in df.columns if col.lower() == 'gift item'],
-    'Price': [col for col in df.columns if col.lower() == 'price'],
-    'Need': [col for col in df.columns if col.lower() == 'need'],
-    'Want': [col for col in df.columns if col.lower() == 'want'],
-    'Category': [col for col in df.columns if col.lower() == 'category']
-}
-
-# 3. Rename columns to exactly what the code expects
-for official_name, found_list in column_map.items():
-    if found_list:
-        df = df.rename(columns={found_list[0]: official_name})
-    else:
-        st.error(f"⚠️ Missing column: '{official_name}'")
-        st.info(f"Columns found in your sheet: `{list(df.columns)}`")
-        st.stop()
-
-# 4. Safe Numeric Conversion
-df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0)
-df['Need'] = pd.to_numeric(df['Need'], errors='coerce').fillna(1)
-df['Want'] = pd.to_numeric(df['Want'], errors='coerce').fillna(1)
-
+st.sidebar.markdown("---")
 st.sidebar.header("🔍 Filter Options")
 
 max_price = int(df['Price'].max())
@@ -99,7 +89,7 @@ filtered_df = df[
 ]
 
 # ==========================================
-# 4. CHART DISPLAY (Locked Panning)
+# 5. CHART DISPLAY (Locked Panning)
 # ==========================================
 if filtered_df.empty:
     st.warning("No gifts match those filters!")
@@ -120,16 +110,8 @@ else:
     fig.update_layout(
         height=650,
         dragmode='pan', 
-        xaxis=dict(
-            range=[0, 11],
-            constrain='domain',
-            fixedrange=False 
-        ),
-        yaxis=dict(
-            range=[0, 11],
-            constrain='domain',
-            fixedrange=False
-        ),
+        xaxis=dict(range=[0, 11], constrain='domain', fixedrange=False),
+        yaxis=dict(range=[0, 11], constrain='domain', fixedrange=False),
         legend=dict(orientation="h", yanchor="top", y=-0.25, xanchor="center", x=0.5),
         margin=dict(l=40, r=40, t=20, b=150)
     )
@@ -143,7 +125,7 @@ else:
     })
 
 # ==========================================
-# 5. DATA TABLE & TOTALS
+# 6. DATA TABLE & TOTALS
 # ==========================================
 st.markdown("---")
 total_rands = filtered_df['Price'].sum()
@@ -156,35 +138,6 @@ with col_center:
         use_container_width=True,
         hide_index=True
     )
-
-# ==========================================
-# 6. ADMIN EDIT FORM (Persistent)
-# ==========================================
-if is_admin:
-    st.markdown("---")
-    st.subheader("➕ Add New Gift to Live List")
-    with st.form("add_form", clear_on_submit=True):
-        f_item = st.text_input("Gift Item Name")
-        f_price = st.number_input("Price (R)", min_value=0, step=50)
-        f_need = st.slider("Need Score", 1, 10, 5)
-        f_want = st.slider("Want Score", 1, 10, 5)
-        f_cat = st.selectbox("Category", df['Category'].unique() if not df.empty else ["Tech", "Tools", "Apparel"])
-        
-        if st.form_submit_with_button("Submit to Google Sheets"):
-            new_row = pd.DataFrame([{
-                "Gift Item": f_item, 
-                "Price": f_price, 
-                "Need": f_need, 
-                "Want": f_want, 
-                "Category": f_cat
-            }])
-            updated_df = pd.concat([df, new_row], ignore_index=True)
-            
-            # This updates the actual Google Sheet
-            conn.update(worksheet="Sheet1", data=updated_df)
-            st.cache_data.clear()
-            st.success(f"Added {f_item} successfully!")
-            st.rerun()
 
 # ==========================================
 # 7. FOOTER
