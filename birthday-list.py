@@ -57,12 +57,26 @@ st.success("✅ Connected to Live Database", icon="🚀")
 # 3. SIDEBAR FILTERS
 # ==========================================
 st.sidebar.markdown("---")
-st.sidebar.header("🔍 Filter Options")
+# ==========================================
+# 3. DATA CLEANING & SIDEBAR FILTERS
+# ==========================================
+# Clean column names: remove leading/trailing spaces and handle case sensitivity
+df.columns = df.columns.str.strip()
 
-# Force numeric types to prevent slider errors
+# Ensure these exact columns exist to avoid the KeyError
+required_columns = ['Gift Item', 'Price', 'Need', 'Want', 'Category']
+for col in required_columns:
+    if col not in df.columns:
+        st.error(f"⚠️ Missing column: '{col}'")
+        st.info(f"Your Sheet columns are: {list(df.columns)}")
+        st.stop()
+
+# Now safe to convert to numeric
 df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0)
 df['Need'] = pd.to_numeric(df['Need'], errors='coerce').fillna(1)
 df['Want'] = pd.to_numeric(df['Want'], errors='coerce').fillna(1)
+
+st.sidebar.header("🔍 Filter Options")
 
 max_price = int(df['Price'].max())
 budget = st.sidebar.slider("Max Budget (Rands)", 0, max_price + 1000, max_price, step=100)
