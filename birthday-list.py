@@ -11,10 +11,10 @@ st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", la
 # Create connection to Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-@st.cache_data(ttl=300) # Refresh data every 5 minutes
+@st.cache_data(ttl=60) 
 def load_data():
-    # Reads the first worksheet by default
-    return conn.read()
+    # You can try passing the worksheet name explicitly if 'Sheet1' is renamed
+    return conn.read(worksheet="Sheet1", ttl="1m")
 
 df = load_data()
 
