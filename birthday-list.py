@@ -7,13 +7,13 @@ import plotly.express as px
 # ==========================================
 st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", layout="wide")
 
-@st.cache_data(ttl=5) # Short TTL for debugging
+@st.cache_data(ttl=5) # Cache for 5 seconds during debugging
 def load_data():
     try:
-        # Get the URL from secrets
+        # Pull the URL from secrets
         csv_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
         
-        # Read directly as a CSV
+        # Read the data directly
         data = pd.read_csv(csv_url)
         return data
     except Exception as e:
@@ -23,32 +23,32 @@ def load_data():
 df = load_data()
 
 # ==========================================
-# 2. DATA VERIFICATION (The "Gibberish" Filter)
+# 2. DATA VERIFICATION (Gibberish Protection)
 # ==========================================
 if df is not None:
-    # 1. Clean headers
-    df.columns = [str(c).strip() for c in df.columns]
-    
-    # 2. Check if the first column looks like HTML (Gibberish check)
-    if not df.empty and '<!DOCTYPE' in str(df.iloc[0,0]):
-        st.error("🚨 The app is reading a 'Login Page' instead of data.")
-        st.info("💡 **Fix:** In Google Sheets, click Share -> Change to 'Anyone with the link' -> Set to **Editor** or **Viewer**.")
+    # Check if we accidentally pulled an HTML login page (the error you got)
+    first_cell = str(df.columns[0])
+    if '<!DOCTYPE' in first_cell or '<html' in first_cell.lower():
+        st.error("🚨 The app is reading a 'Web Page' instead of raw data.")
+        st.write("Current URL in Secrets is likely an '/edit' link instead of an '/export' link.")
+        st.info("💡 **Fix:** Change the end of your URL in Secrets to `/export?format=csv&gid=0`.")
         st.stop()
 
-    # 3. Handle missing columns
-    required = ['Gift Item', 'Price', 'Need', 'Want', 'Category']
-    for col in required:
+    # Clean headers and convert numbers
+    df.columns = [str(c).strip() for c in df.columns]
+    
+    # Ensure Row 1 columns exist
+    for col in ['Gift Item', 'Price', 'Need', 'Want', 'Category']:
         if col not in df.columns:
-            st.warning(f"Column '{col}' missing. Found: {list(df.columns)}")
-            # Attempt to fix by positional index if headers are slightly wrong
-            if len(df.columns) >= 5:
-                df.columns = required + list(df.columns[5:])
-                break
+            st.error(f"⚠️ Column '{col}' not found. Found: {list(df.columns)}")
+            st.stop()
 
-    # 4. Final Numeric Conversion
+    # Numeric conversion
     df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0)
     df['Need'] = pd.to_numeric(df['Need'], errors='coerce').fillna(1)
     df['Want'] = pd.to_numeric(df['Want'], errors='coerce').fillna(1)
+else:
+    st.stop()
 
 # ==========================================
 # 3. MAIN UI & AUTHENTICATION
