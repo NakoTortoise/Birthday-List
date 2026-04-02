@@ -29,18 +29,17 @@ st.title("🎁 Josua's 21st Birthday List")
 
 # Admin Sidebar Toggle with safe secret access
 st.sidebar.header("🔐 Admin Controls")
+# Replace your authentication logic with this "safer" version
 with st.sidebar.expander("Edit Mode"):
     pwd_input = st.text_input("Password", type="password")
     
-    # We use .get to prevent the "KeyError" crash if the secret is missing
-    actual_pwd = st.secrets.get("admin_password")
+    # .get() prevents a crash if the key is missing from secrets.toml
+    target_password = st.secrets.get("admin_password", "DEFAULT_IF_MISSING")
     
-    if actual_pwd and pwd_input == actual_pwd:
+    if pwd_input == target_password and target_password != "DEFAULT_IF_MISSING":
         st.success("Admin Verified")
         is_admin = True
     else:
-        if not actual_pwd:
-            st.error("Secret 'admin_password' not found in config.")
         is_admin = False
 
 st.success("✅ Connected to Live Database", icon="🚀")
