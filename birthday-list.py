@@ -126,19 +126,26 @@ else:
     })
 
 # ==========================================
-# 6. DATA TABLE & TOTALS
+# 6. ADMIN EDIT MODE (The Reliable Way)
 # ==========================================
-st.markdown("---")
-total_rands = filtered_df['Price'].sum()
-st.metric("Total Value of Filtered Gifts", f"R {total_rands:,.2f}")
+if is_admin:
+    st.markdown("---")
+    st.subheader("🚀 Admin Actions")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.info("To add items permanently, use the link below. It will update the sheet and the app automatically.")
+        # Replace this URL with the "Send" link from a Google Form linked to your sheet
+        st.link_button("➕ Add New Item via Google Form", "https://docs.google.com/forms/d/e/your-form-id/viewform")
+    
+    with col2:
+        st.warning("Manual Database Access")
+        # Direct link to the Sheet for quick deletes or score tweaks
+        st.link_button("📂 Open Raw Google Sheet", st.secrets["connections"]["gsheets"]["spreadsheet"].replace('/export?format=csv&gid=0', '/edit'))
 
-col_left, col_center, col_right = st.columns([0.1, 0.8, 0.1])
-with col_center:
-    st.dataframe(
-        filtered_df[['Gift Item', 'Price', 'Category']].sort_values(by="Price"),
-        use_container_width=True,
-        hide_index=True
-    )
+    if st.button("🗑️ Clear Cache & Refresh Data"):
+        st.cache_data.clear()
+        st.rerun()
 
 # ==========================================
 # 7. FOOTER
