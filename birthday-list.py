@@ -112,7 +112,6 @@ else:
 if is_admin:
     st.markdown("---")
     st.subheader("🛠️ Admin Tools")
-    st.info("Since we are using a direct stream, edit your Google Sheet directly to see changes here.")
     st.link_button("📂 Open Google Sheet to Edit", SHEET_URL.replace('/export?format=csv&gid=0', '/edit'))
     if st.button("🔄 Refresh Data Now"):
         st.cache_data.clear()
