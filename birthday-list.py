@@ -1,59 +1,59 @@
 import streamlit as st
+from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import plotly.express as px
-import os
 
 # ==========================================
-# 1. PAGE CONFIG & DATA LOADING
+# 1. PAGE CONFIG & PERSISTENT CONNECTION
 # ==========================================
 st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", layout="wide")
 
-@st.cache_data
+# Create connection to Google Sheets
+conn = st.connection("gsheets", type=GSheetsConnection)
+
+@st.cache_data(ttl=300) # Refresh data every 5 minutes
 def load_data():
-    base_path = os.path.dirname(__file__)
-    file_path = os.path.join(base_path, 'birthday-list.csv')
-    
-    if os.path.exists(file_path):
-        try:
-            # utf-8-sig handles standard UTF-8 AND Excel's special UTF-8 format
-            return pd.read_csv(file_path, encoding='utf-8-sig')
-        except UnicodeDecodeError:
-            # Fallback for older Windows-style CSVs
-            return pd.read_csv(file_path, encoding='cp1252')
-    else:
-        return None
+    # Reads the first worksheet by default
+    return conn.read()
 
 df = load_data()
 
 # ==========================================
-# 2. MAIN UI & ERROR HANDLING
+# 2. MAIN UI & AUTHENTICATION
 # ==========================================
-st.balloons()
 st.title("🎁 Josua's 21st Birthday List")
 
-if df is None:
-    st.error("⚠️ 'gifts.csv' not found!")
-    st.info("Please ensure 'gifts.csv' is in the same folder as this script.")
-    st.stop()
+# Admin Sidebar Toggle
+st.sidebar.header("🔐 Admin Controls")
+with st.sidebar.expander("Edit Mode"):
+    pwd_input = st.text_input("Password", type="password")
+    if pwd_input == st.secrets["admin_password"]:
+        st.success("Admin Verified")
+        is_admin = True
+    else:
+        is_admin = False
 
-st.caption("Tip: Use the sidebar to filter by Price, Need, and Want.")
-
-st.success("✅ **Notice:** This app now shows the **real birthday list entries**. Enjoy!", icon="🚀")
+st.success("✅ Connected to Live Database", icon="🚀")
 
 # ==========================================
 # 3. SIDEBAR FILTERS
 # ==========================================
+st.sidebar.markdown("---")
 st.sidebar.header("🔍 Filter Options")
 
-# Price Filter (Step=100 for easy snapping)
-max_val = int(df['Price'].max())
-budget = st.sidebar.slider("Max Budget (Rands)", 0, max_val + 500, max_val, step=100)
+# Ensure numeric types for sliders
+df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
+df['Need'] = pd.to_numeric(df['Need'], errors='coerce')
+df['Want'] = pd.to_numeric(df['Want'], errors='coerce')
 
-# Need & Want Filters
+max_price = int(df['Price'].max())
+budget = st.sidebar.slider("Max Budget (Rands)", 0, max_price + 1000, max_price, step=100)
 min_need = st.sidebar.slider("Min 'Need' Score", 1, 10, 1)
 min_want = st.sidebar.slider("Min 'Want' Score", 1, 10, 1)
 
-# Apply Filters to the Data
+if st.sidebar.button("🔄 Reset Chart View"):
+    st.rerun()
+
 filtered_df = df[
     (df['Price'] <= budget) & 
     (df['Need'] >= min_need) & 
@@ -61,12 +61,11 @@ filtered_df = df[
 ]
 
 # ==========================================
-# 4. CHART & TABLE DISPLAY
+# 4. CHART DISPLAY (Locked Panning)
 # ==========================================
 if filtered_df.empty:
-    st.warning("No gifts match those filters! Try adjusting the sliders in the sidebar.")
+    st.warning("No gifts match those filters!")
 else:
-    # --- Create the Bubble Chart ---
     fig = px.scatter(filtered_df, 
                      x="Want", 
                      y="Need", 
@@ -75,47 +74,80 @@ else:
                      hover_name="Gift Item",
                      text="Gift Item",
                      size_max=50, 
-                     range_x=[0, 11], 
-                     range_y=[0, 11],
                      labels={"Want": "Want Score (1-10)", "Need": "Need Score (1-10)"},
                      template="plotly_white")
 
-    # --- Chart Styling (Pan mode & Legend Position) ---
     fig.update_traces(textposition='top center')
     
     fig.update_layout(
         height=650,
-        dragmode='pan',  # Default to Panning instead of Zooming
-        legend=dict(
-            orientation="h",
-            yanchor="top",
-            y=-0.25,      # Pushes legend down to avoid X-axis overlap
-            xanchor="center",
-            x=0.5,
-            title_text="" 
+        dragmode='pan', 
+        xaxis=dict(
+            range=[0, 11],
+            constrain='domain',
+            fixedrange=False # Allows zooming IN
         ),
-        margin=dict(l=40, r=40, t=20, b=150), # Big bottom margin for the legend
-        xaxis=dict(fixedrange=False), 
-        yaxis=dict(fixedrange=False)
+        yaxis=dict(
+            range=[0, 11],
+            constrain='domain',
+            fixedrange=False
+        ),
+        legend=dict(orientation="h", yanchor="top", y=-0.25, xanchor="center", x=0.5),
+        margin=dict(l=40, r=40, t=20, b=150)
     )
 
-    # --- Display the Chart ---
-    st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
-
-    st.markdown("---")
-
-    # --- Display the Centered Table ---
-    st.subheader("Selected Gifts Details")
-    
-    # We use columns to "center" the table and prevent it from stretching too wide
-    col_left, col_center, col_right = st.columns([0.1, 0.8, 0.1])
-    
-    with col_center:
-        st.dataframe(
-            filtered_df[['Gift Item', 'Price', 'Category']].sort_values(by="Price"),
-            use_container_width=True, # Fits the width of this specific 80% column
-            hide_index=True
-        )
+    st.plotly_chart(fig, use_container_width=True, config={
+        'scrollZoom': True, 
+        'displayModeBar': True,
+        'doubleClick': 'reset',
+        'displaylogo': False,
+        'modeBarButtonsToRemove': ['zoom2d', 'select2d', 'lasso2d', 'autoScale2d']
+    })
 
 # ==========================================
-# 5. FOOTER
+# 5. DATA TABLE & TOTALS
+# ==========================================
+st.markdown("---")
+total_rands = filtered_df['Price'].sum()
+st.metric("Total Value of Filtered Gifts", f"R {total_rands:,.2f}")
+
+col_left, col_center, col_right = st.columns([0.1, 0.8, 0.1])
+with col_center:
+    st.dataframe(
+        filtered_df[['Gift Item', 'Price', 'Category']].sort_values(by="Price"),
+        use_container_width=True,
+        hide_index=True
+    )
+
+# ==========================================
+# 6. ADMIN EDIT FORM (Persistent)
+# ==========================================
+if is_admin:
+    st.markdown("---")
+    st.subheader("➕ Add New Gift to Live List")
+    with st.form("add_form", clear_on_submit=True):
+        f_item = st.text_input("Gift Item Name")
+        f_price = st.number_input("Price (R)", min_value=0, step=50)
+        f_need = st.slider("Need Score", 1, 10, 5)
+        f_want = st.slider("Want Score", 1, 10, 5)
+        f_cat = st.selectbox("Category", df['Category'].unique() if not df.empty else ["Tech", "Tools", "Apparel"])
+        
+        if st.form_submit_with_button("Submit to Google Sheets"):
+            new_row = pd.DataFrame([{
+                "Gift Item": f_item, 
+                "Price": f_price, 
+                "Need": f_need, 
+                "Want": f_want, 
+                "Category": f_cat
+            }])
+            updated_df = pd.concat([df, new_row], ignore_index=True)
+            
+            # This pushes the update to your Google Sheet
+            conn.update(data=updated_df)
+            st.cache_data.clear()
+            st.success(f"Added {f_item} successfully!")
+            st.rerun()
+
+# ==========================================
+# 7. FOOTER
+st.caption("Tip: Use scroll wheel/pinch to zoom. Double-click to reset view.")
