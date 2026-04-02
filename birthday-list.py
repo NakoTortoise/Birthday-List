@@ -1,37 +1,34 @@
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import plotly.express as px
 
 # ==========================================
-# 1. PAGE CONFIG & PERSISTENT CONNECTION
+# 1. PAGE CONFIG & DIRECT DATA LOADING
 # ==========================================
 st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", layout="wide")
 
-# Establish connection
-conn = st.connection("gsheets", type=GSheetsConnection)
-
-@st.cache_data(ttl=10) # Cache for only 10 seconds during debugging
+@st.cache_data(ttl=10)
 def load_data():
     try:
-        # We explicitly target the first 5 columns to prevent 'Ghost Data' 400 errors
-        # worksheet="Sheet1" must match your tab name exactly
-        return conn.read(
-            worksheet="Sheet1",
-            usecols=[0, 1, 2, 3, 4],
-            ttl=0
-        )
+        # Pull the URL from your secrets
+        sheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+        
+        # ENGINEERING TRICK: Convert the "edit" URL to a "export as CSV" URL
+        # This bypasses the 400 Bad Request by requesting a raw data stream
+        csv_url = sheet_url.replace('/edit#gid=', '/export?format=csv&gid=')
+        if '/edit' in sheet_url and 'gid' not in sheet_url:
+            csv_url = sheet_url.replace('/edit', '/export?format=csv')
+            
+        return pd.read_csv(csv_url)
     except Exception as e:
-        st.error("🚨 Google Sheets Handshake Failed")
-        st.write(f"**Technical Error:** `{e}`")
+        st.error("🚨 Direct Connection Failed")
+        st.write(f"**Error Details:** {e}")
         return None
 
-# Execute the load
 df = load_data()
 
-# Safety check: Stop the app if data is missing so we can read the error
 if df is None or df.empty:
-    st.info("💡 **Engineering Check:** Verify that 'Sheet1' is the leftmost tab in your Google Sheet and contains data in Row 2.")
+    st.info("💡 Check: Is Row 1 of your Google Sheet exactly: Gift Item, Price, Need, Want, Category?")
     st.stop()
 
 # ==========================================
