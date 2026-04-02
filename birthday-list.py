@@ -54,24 +54,30 @@ with st.sidebar.expander("Edit Mode"):
 st.success("✅ Connected to Live Database", icon="🚀")
 
 # ==========================================
-# 3. SIDEBAR FILTERS
-# ==========================================
-st.sidebar.markdown("---")
-# ==========================================
 # 3. DATA CLEANING & SIDEBAR FILTERS
 # ==========================================
-# Clean column names: remove leading/trailing spaces and handle case sensitivity
+# 1. Clean invisible spaces from headers
 df.columns = df.columns.str.strip()
 
-# Ensure these exact columns exist to avoid the KeyError
-required_columns = ['Gift Item', 'Price', 'Need', 'Want', 'Category']
-for col in required_columns:
-    if col not in df.columns:
-        st.error(f"⚠️ Missing column: '{col}'")
-        st.info(f"Your Sheet columns are: {list(df.columns)}")
+# 2. Flexible Mapping (handles common typos or case differences)
+column_map = {
+    'Gift Item': [col for col in df.columns if col.lower() == 'gift item'],
+    'Price': [col for col in df.columns if col.lower() == 'price'],
+    'Need': [col for col in df.columns if col.lower() == 'need'],
+    'Want': [col for col in df.columns if col.lower() == 'want'],
+    'Category': [col for col in df.columns if col.lower() == 'category']
+}
+
+# 3. Rename columns to exactly what the code expects
+for official_name, found_list in column_map.items():
+    if found_list:
+        df = df.rename(columns={found_list[0]: official_name})
+    else:
+        st.error(f"⚠️ Missing column: '{official_name}'")
+        st.info(f"Columns found in your sheet: `{list(df.columns)}`")
         st.stop()
 
-# Now safe to convert to numeric
+# 4. Safe Numeric Conversion
 df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0)
 df['Need'] = pd.to_numeric(df['Need'], errors='coerce').fillna(1)
 df['Want'] = pd.to_numeric(df['Want'], errors='coerce').fillna(1)
