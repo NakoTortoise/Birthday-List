@@ -102,7 +102,6 @@ if not filtered_df.empty:
     st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("---")
-    st.metric("Total Filtered Value", f"R {filtered_df['Price'].sum():,.2f}")
     st.dataframe(filtered_df[['Gift Item', 'Price', 'Category']], use_container_width=True, hide_index=True)
 else:
     st.warning("No items match your filters.")
