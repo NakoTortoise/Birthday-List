@@ -11,31 +11,36 @@ st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", la
 # Create connection to Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=300) 
 def load_data():
-    try:
-        # Attempt to read using the spreadsheet URL in your secrets
-        return conn.read(worksheet="Sheet1")
-    except Exception as e:
-        st.error(f"Connection Error: {e}")
-        st.info("💡 Tip: Check if Row 1 of your sheet has headers and is shared correctly.")
-        return None
+    # Attempting to read from Sheet1
+    return conn.read(worksheet="Sheet1")
 
-df = load_data()
+try:
+    df = load_data()
+except Exception as e:
+    st.error(f"Failed to connect to Google Sheets: {e}")
+    st.stop()
 
 # ==========================================
 # 2. MAIN UI & AUTHENTICATION
 # ==========================================
 st.title("🎁 Josua's 21st Birthday List")
 
-# Admin Sidebar Toggle
+# Admin Sidebar Toggle with safe secret access
 st.sidebar.header("🔐 Admin Controls")
 with st.sidebar.expander("Edit Mode"):
     pwd_input = st.text_input("Password", type="password")
-    if pwd_input == st.secrets["admin_password"]:
+    
+    # We use .get to prevent the "KeyError" crash if the secret is missing
+    actual_pwd = st.secrets.get("admin_password")
+    
+    if actual_pwd and pwd_input == actual_pwd:
         st.success("Admin Verified")
         is_admin = True
     else:
+        if not actual_pwd:
+            st.error("Secret 'admin_password' not found in config.")
         is_admin = False
 
 st.success("✅ Connected to Live Database", icon="🚀")
@@ -46,10 +51,10 @@ st.success("✅ Connected to Live Database", icon="🚀")
 st.sidebar.markdown("---")
 st.sidebar.header("🔍 Filter Options")
 
-# Ensure numeric types for sliders
-df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
-df['Need'] = pd.to_numeric(df['Need'], errors='coerce')
-df['Want'] = pd.to_numeric(df['Want'], errors='coerce')
+# Force numeric types to prevent slider errors
+df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0)
+df['Need'] = pd.to_numeric(df['Need'], errors='coerce').fillna(1)
+df['Want'] = pd.to_numeric(df['Want'], errors='coerce').fillna(1)
 
 max_price = int(df['Price'].max())
 budget = st.sidebar.slider("Max Budget (Rands)", 0, max_price + 1000, max_price, step=100)
@@ -90,7 +95,7 @@ else:
         xaxis=dict(
             range=[0, 11],
             constrain='domain',
-            fixedrange=False # Allows zooming IN
+            fixedrange=False 
         ),
         yaxis=dict(
             range=[0, 11],
@@ -147,8 +152,8 @@ if is_admin:
             }])
             updated_df = pd.concat([df, new_row], ignore_index=True)
             
-            # This pushes the update to your Google Sheet
-            conn.update(data=updated_df)
+            # This updates the actual Google Sheet
+            conn.update(worksheet="Sheet1", data=updated_df)
             st.cache_data.clear()
             st.success(f"Added {f_item} successfully!")
             st.rerun()
