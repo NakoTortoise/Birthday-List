@@ -11,19 +11,24 @@ st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", la
 # Create connection to Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-@st.cache_data(ttl=60)
+# Create connection with a high-speed refresh
+conn = st.connection("gsheets", type=GSheetsConnection)
+
+@st.cache_data(ttl=0) # Setting ttl=0 forces the app to ignore old errors
 def load_data():
     try:
-        # We explicitly name the worksheet to avoid 'Bad Request' on ambiguous sheets
+        # We explicitly target 'Sheet1' to remove ambiguity
         return conn.read(worksheet="Sheet1")
     except Exception as e:
-        st.error("🚨 Google Sheets Connection Error")
-        st.write(f"**Technical Detail:** {e}")
-        st.info("Check: 1. Is the Sheet shared with 'Anyone with link' as Editor? 2. Is the Tab named 'Sheet1'?")
+        st.error("🚨 Handshake Failed")
+        st.write(f"**Error Details:** {e}")
         return None
 
 df = load_data()
+
+# Stop the app if data didn't load so we can see the error clearly
 if df is None:
+    st.info("Check: Is the tab at the bottom of your Google Sheet named exactly 'Sheet1'?")
     st.stop()
 
 # ==========================================
