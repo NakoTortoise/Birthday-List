@@ -3,26 +3,26 @@ import pandas as pd
 import plotly.express as px
 
 # ==========================================
-# 1. PAGE CONFIG & SECRETS VALIDATION
+# 1. PAGE CONFIG & SECRETS RETRIEVAL
 # ==========================================
 st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", layout="wide")
 
-# We pull the strings directly to avoid the "Unhashable" error
-# and ensure they exist before the app runs
+# We fetch the secrets and force them to be plain strings
 try:
-    SHEET_URL = st.secrets["connections"]["gsheets"]
-    ADMIN_PWD = st.secrets["secrets"]["admin_password"]
-except KeyError as e:
-    st.error(f"🚨 Secret Missing: {e}")
+    # Explicitly casting to str() prevents the AttrDict error
+    SHEET_URL = str(st.secrets["connections"]["gsheets"])
+    ADMIN_PWD = str(st.secrets["secrets"]["admin_password"])
+except Exception as e:
+    st.error(f"🚨 Configuration Error: {e}")
     st.info("Check your Streamlit Cloud Secrets for [connections] and [secrets] sections.")
     st.stop()
 
-# Adding the underscore '_' to url prevents the Hashing Error
+# The underscore _url tells Streamlit not to hash this internal object
 @st.cache_data(ttl=60)
-def load_data(_url):
+def load_data(_url_string):
     try:
-        # Read directly from the export URL
-        return pd.read_csv(_url)
+        # Now pd.read_csv gets a clean string URL
+        return pd.read_csv(_url_string)
     except Exception as e:
         st.error(f"🚨 Connection Error: {e}")
         return None
