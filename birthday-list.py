@@ -11,15 +11,19 @@ st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", la
 # Create connection to Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-@st.cache_data(ttl=300) 
+@st.cache_data(ttl=60)
 def load_data():
-    # Attempting to read from Sheet1
-    return conn.read(worksheet="Sheet1")
+    try:
+        # We explicitly name the worksheet to avoid 'Bad Request' on ambiguous sheets
+        return conn.read(worksheet="Sheet1")
+    except Exception as e:
+        st.error("🚨 Google Sheets Connection Error")
+        st.write(f"**Technical Detail:** {e}")
+        st.info("Check: 1. Is the Sheet shared with 'Anyone with link' as Editor? 2. Is the Tab named 'Sheet1'?")
+        return None
 
-try:
-    df = load_data()
-except Exception as e:
-    st.error(f"Failed to connect to Google Sheets: {e}")
+df = load_data()
+if df is None:
     st.stop()
 
 # ==========================================
