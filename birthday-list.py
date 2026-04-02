@@ -8,34 +8,30 @@ import plotly.express as px
 # ==========================================
 st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", layout="wide")
 
-# Create connection to Google Sheets
+# Establish connection
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Create connection with a high-speed refresh
-conn = st.connection("gsheets", type=GSheetsConnection)
-
-@st.cache_data(ttl=0)
+@st.cache_data(ttl=10) # Cache for only 10 seconds during debugging
 def load_data():
     try:
-        # We specify the worksheet AND the columns to be safe
-        # This prevents the API from scanning the whole workbook
+        # We explicitly target the first 5 columns to prevent 'Ghost Data' 400 errors
+        # worksheet="Sheet1" must match your tab name exactly
         return conn.read(
             worksheet="Sheet1",
-            usecols=[0, 1, 2, 3, 4], # Specifically columns A through E
+            usecols=[0, 1, 2, 3, 4],
             ttl=0
         )
     except Exception as e:
-        st.error(f"🚨 Connection Error: {e}")
-        # DIAGNOSTIC: This will print the names of all sheets the app CAN see
-        if "400" in str(e):
-            st.info("Tip: Ensure 'Sheet1' is the leftmost tab in your Google Sheet.")
+        st.error("🚨 Google Sheets Handshake Failed")
+        st.write(f"**Technical Error:** `{e}`")
         return None
 
+# Execute the load
 df = load_data()
 
-# Stop the app if data didn't load so we can see the error clearly
-if df is None:
-    st.info("Check: Is the tab at the bottom of your Google Sheet named exactly 'Sheet1'?")
+# Safety check: Stop the app if data is missing so we can read the error
+if df is None or df.empty:
+    st.info("💡 **Engineering Check:** Verify that 'Sheet1' is the leftmost tab in your Google Sheet and contains data in Row 2.")
     st.stop()
 
 # ==========================================
