@@ -7,21 +7,22 @@ import plotly.express as px
 # ==========================================
 st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", layout="wide")
 
-# Safe Secret Retrieval
-# This looks for the URL and the Password specifically to avoid the "Table is gone" error
-SHEET_URL = st.secrets.get("connections", {}).get("gsheets")
-ADMIN_PWD = st.secrets.get("secrets", {}).get("admin_password")
-
-if not SHEET_URL:
-    st.error("🚨 Configuration Error: Spreadsheet URL not found in Secrets.")
-    st.info("Ensure your Secrets have the [connections] section with the 'gsheets' key.")
+# We pull the strings directly to avoid the "Unhashable" error
+# and ensure they exist before the app runs
+try:
+    SHEET_URL = st.secrets["connections"]["gsheets"]
+    ADMIN_PWD = st.secrets["secrets"]["admin_password"]
+except KeyError as e:
+    st.error(f"🚨 Secret Missing: {e}")
+    st.info("Check your Streamlit Cloud Secrets for [connections] and [secrets] sections.")
     st.stop()
 
-@st.cache_data(ttl=10)
-def load_data(url):
+# Adding the underscore '_' to url prevents the Hashing Error
+@st.cache_data(ttl=60)
+def load_data(_url):
     try:
         # Read directly from the export URL
-        return pd.read_csv(url)
+        return pd.read_csv(_url)
     except Exception as e:
         st.error(f"🚨 Connection Error: {e}")
         return None
