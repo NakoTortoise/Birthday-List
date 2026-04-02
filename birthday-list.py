@@ -3,47 +3,51 @@ import pandas as pd
 import plotly.express as px
 
 # ==========================================
-# 1. PAGE CONFIG & CLEAN DATA LOADING
+# 1. PAGE CONFIG & SECRETS VALIDATION
 # ==========================================
 st.set_page_config(page_title="Josua's 21st Birthday List", page_icon="🎁", layout="wide")
 
-@st.cache_data(ttl=5) # Cache for 5 seconds during debugging
-def load_data():
+# Safe Secret Retrieval
+# This looks for the URL and the Password specifically to avoid the "Table is gone" error
+SHEET_URL = st.secrets.get("connections", {}).get("gsheets")
+ADMIN_PWD = st.secrets.get("secrets", {}).get("admin_password")
+
+if not SHEET_URL:
+    st.error("🚨 Configuration Error: Spreadsheet URL not found in Secrets.")
+    st.info("Ensure your Secrets have the [connections] section with the 'gsheets' key.")
+    st.stop()
+
+@st.cache_data(ttl=10)
+def load_data(url):
     try:
-        # Pull the URL from secrets
-        csv_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
-        
-        # Read the data directly
-        data = pd.read_csv(csv_url)
-        return data
+        # Read directly from the export URL
+        return pd.read_csv(url)
     except Exception as e:
         st.error(f"🚨 Connection Error: {e}")
         return None
 
-df = load_data()
+df = load_data(SHEET_URL)
 
 # ==========================================
-# 2. DATA VERIFICATION (Gibberish Protection)
+# 2. DATA CLEANING & VERIFICATION
 # ==========================================
 if df is not None:
-    # Check if we accidentally pulled an HTML login page (the error you got)
-    first_cell = str(df.columns[0])
-    if '<!DOCTYPE' in first_cell or '<html' in first_cell.lower():
-        st.error("🚨 The app is reading a 'Web Page' instead of raw data.")
-        st.write("Current URL in Secrets is likely an '/edit' link instead of an '/export' link.")
-        st.info("💡 **Fix:** Change the end of your URL in Secrets to `/export?format=csv&gid=0`.")
-        st.stop()
-
-    # Clean headers and convert numbers
+    # Clean headers
     df.columns = [str(c).strip() for c in df.columns]
     
-    # Ensure Row 1 columns exist
-    for col in ['Gift Item', 'Price', 'Need', 'Want', 'Category']:
-        if col not in df.columns:
-            st.error(f"⚠️ Column '{col}' not found. Found: {list(df.columns)}")
-            st.stop()
+    # Check for HTML gibberish
+    if not df.empty and '<!DOCTYPE' in str(df.columns[0]):
+        st.error("🚨 App is reading a Web Page instead of Data.")
+        st.stop()
 
-    # Numeric conversion
+    # Required columns check
+    required = ['Gift Item', 'Price', 'Need', 'Want', 'Category']
+    if not all(col in df.columns for col in required):
+        st.warning(f"Header mismatch. Found: {list(df.columns)}")
+        # Forced recovery if structure is correct but names are weird
+        if len(df.columns) >= 5:
+            df.columns = required + list(df.columns[5:])
+            
     df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0)
     df['Need'] = pd.to_numeric(df['Need'], errors='coerce').fillna(1)
     df['Want'] = pd.to_numeric(df['Want'], errors='coerce').fillna(1)
@@ -58,16 +62,15 @@ st.title("🎁 Josua's 21st Birthday List")
 # Admin Sidebar Toggle
 st.sidebar.header("🔐 Admin Controls")
 with st.sidebar.expander("Edit Mode"):
-    pwd_input = st.text_input("Password", type="password")
-    actual_pwd = st.secrets.get("admin_password")
+    pwd_input = st.text_input("Enter Password", type="password")
     
-    if actual_pwd and pwd_input == actual_pwd:
+    if ADMIN_PWD and pwd_input == ADMIN_PWD:
         st.success("Admin Verified")
         is_admin = True
     else:
+        if not ADMIN_PWD:
+            st.warning("Password not set in Secrets.")
         is_admin = False
-
-st.success("✅ Connected to Live Database", icon="🚀")
 
 # ==========================================
 # 4. SIDEBAR FILTERS
@@ -80,9 +83,6 @@ budget = st.sidebar.slider("Max Budget (Rands)", 0, max_price + 1000, max_price,
 min_need = st.sidebar.slider("Min 'Need' Score", 1, 10, 1)
 min_want = st.sidebar.slider("Min 'Want' Score", 1, 10, 1)
 
-if st.sidebar.button("🔄 Reset Chart View"):
-    st.rerun()
-
 filtered_df = df[
     (df['Price'] <= budget) & 
     (df['Need'] >= min_need) & 
@@ -90,63 +90,30 @@ filtered_df = df[
 ]
 
 # ==========================================
-# 5. CHART DISPLAY (Locked Panning)
+# 5. CHART & TABLE
 # ==========================================
-if filtered_df.empty:
-    st.warning("No gifts match those filters!")
-else:
-    fig = px.scatter(filtered_df, 
-                     x="Want", 
-                     y="Need", 
-                     size="Price", 
-                     color="Category",
-                     hover_name="Gift Item",
-                     text="Gift Item",
-                     size_max=50, 
-                     labels={"Want": "Want Score (1-10)", "Need": "Need Score (1-10)"},
-                     template="plotly_white")
-
-    fig.update_traces(textposition='top center')
+if not filtered_df.empty:
+    fig = px.scatter(filtered_df, x="Want", y="Need", size="Price", color="Category",
+                     hover_name="Gift Item", text="Gift Item", size_max=40,
+                     range_x=[0, 11], range_y=[0, 11], template="plotly_white")
     
-    fig.update_layout(
-        height=650,
-        dragmode='pan', 
-        xaxis=dict(range=[0, 11], constrain='domain', fixedrange=False),
-        yaxis=dict(range=[0, 11], constrain='domain', fixedrange=False),
-        legend=dict(orientation="h", yanchor="top", y=-0.25, xanchor="center", x=0.5),
-        margin=dict(l=40, r=40, t=20, b=150)
-    )
+    fig.update_layout(height=600, dragmode='pan')
+    st.plotly_chart(fig, use_container_width=True)
 
-    st.plotly_chart(fig, use_container_width=True, config={
-        'scrollZoom': True, 
-        'displayModeBar': True,
-        'doubleClick': 'reset',
-        'displaylogo': False,
-        'modeBarButtonsToRemove': ['zoom2d', 'select2d', 'lasso2d', 'autoScale2d']
-    })
+    st.markdown("---")
+    st.metric("Total Filtered Value", f"R {filtered_df['Price'].sum():,.2f}")
+    st.dataframe(filtered_df[['Gift Item', 'Price', 'Category']], use_container_width=True, hide_index=True)
+else:
+    st.warning("No items match your filters.")
 
 # ==========================================
-# 6. ADMIN EDIT MODE (The Reliable Way)
+# 6. ADMIN ACTIONS
 # ==========================================
 if is_admin:
     st.markdown("---")
-    st.subheader("🚀 Admin Actions")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.info("To add items permanently, use the link below. It will update the sheet and the app automatically.")
-        # Replace this URL with the "Send" link from a Google Form linked to your sheet
-        st.link_button("➕ Add New Item via Google Form", "https://docs.google.com/forms/d/e/your-form-id/viewform")
-    
-    with col2:
-        st.warning("Manual Database Access")
-        # Direct link to the Sheet for quick deletes or score tweaks
-        st.link_button("📂 Open Raw Google Sheet", st.secrets["connections"]["gsheets"]["spreadsheet"].replace('/export?format=csv&gid=0', '/edit'))
-
-    if st.button("🗑️ Clear Cache & Refresh Data"):
+    st.subheader("🛠️ Admin Tools")
+    st.info("Since we are using a direct stream, edit your Google Sheet directly to see changes here.")
+    st.link_button("📂 Open Google Sheet to Edit", SHEET_URL.replace('/export?format=csv&gid=0', '/edit'))
+    if st.button("🔄 Refresh Data Now"):
         st.cache_data.clear()
         st.rerun()
-
-# ==========================================
-# 7. FOOTER
-st.caption("Tip: Use scroll wheel/pinch to zoom. Double-click to reset view.")
