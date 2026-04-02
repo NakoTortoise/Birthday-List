@@ -32,17 +32,28 @@ df = load_data()
 # 2. DIAGNOSTIC & DATA CLEANING
 # ==========================================
 if df is not None:
-    # 1. Clean headers (remove invisible spaces)
+    # Remove any rows/cols that are entirely empty (common in Google exports)
+    df = df.dropna(how='all', axis=0).dropna(how='all', axis=1)
+    
+    # Clean headers (remove invisible spaces/newlines)
     df.columns = [str(c).strip() for c in df.columns]
     
-    # 2. Check for the "Gift Item" column
+    # --- THE SAFETY NET ---
+    # If Python didn't find "Gift Item", it might have treated Row 1 as data
+    # We will manually assign the names if the "Price" or "Gift Item" columns are missing
+    expected = ['Gift Item', 'Price', 'Need', 'Want', 'Category']
+    
     if 'Gift Item' not in df.columns:
-        st.error("🚨 Column Header Mismatch")
-        st.write("Python sees these columns in your sheet:", list(df.columns))
-        st.info("💡 **Fix:** Ensure Row 1 of your Google Sheet contains: Gift Item, Price, Need, Want, Category")
-        st.stop()
+        # If the columns are "Unnamed", it means Row 1 in your Sheet was blank
+        # We manually rename the first 5 columns to what we need
+        if len(df.columns) >= 5:
+            df.columns = expected + list(df.columns[5:])
+        else:
+            st.error("🚨 Data structure is too small.")
+            st.write("Found columns:", list(df.columns))
+            st.stop()
 
-    # 3. Safe numeric conversion
+    # Final conversion to numbers for the chart to work
     df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0)
     df['Need'] = pd.to_numeric(df['Need'], errors='coerce').fillna(1)
     df['Want'] = pd.to_numeric(df['Want'], errors='coerce').fillna(1)
